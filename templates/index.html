@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBot Interactivo</title>
+    <link rel="stylesheet" href="../static/styles.css">
+</head>
+<body>  
+    <header>
+        <h1>RECIO Y MENDOZA</h1>
+    </header>
+    
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="Bot Avatar">
+                <div>
+                    <h2>ChatBot</h2>
+                    <small>En línea</small>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">
+                    ¡Hola! Soy tu asistente virtual. ¿En qué puedo ayudarte hoy?
+                    <div class="message-time" id="currentTime"></div>
+                </div>
+            </div>
+            
+            <div class="suggestions">
+                <div class="suggestion" data-question="¿Cuáles son tus servicios?">Servicios</div>
+                <div class="suggestion" data-question="¿Cómo puedo contactarlos?">Contacto</div>
+                <div class="suggestion" data-question="¿Qué horarios tienen?">Horarios</div>
+                <div class="suggestion" data-question="¿Dónde están ubicados?">Ubicación</div>
+            </div>
+            
+            <div class="chat-input">
+                <input type="text" id="userInput" placeholder="Escribe tu mensaje aquí..." autocomplete="off">
+                <button id="sendButton">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>ChatBot &copy; 2023 - Todos los derechos reservados</p>
+    </footer>
+
+    <script src="../static/script.js"></script>
+</body>
+</html>
