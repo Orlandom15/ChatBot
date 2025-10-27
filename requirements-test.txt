@@ -9,4 +9,4 @@ black==23.0.0
 flake8==6.0.0
 
 # Test Reporting
-coverage==7.2.7
+coverage==7.2.  
