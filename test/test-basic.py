@@ -8,6 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 def test_imports():
     """Prueba que los imports funcionen"""
     try:
+        from app import app
         from config.database import NeonDatabase
         assert True
     except ImportError as e:
