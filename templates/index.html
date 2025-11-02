@@ -3,12 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatBot Interactivo</title>
+    <title>ChatBot Universitario - RECIO Y MENDOZA</title>
     <link rel="stylesheet" href="../static/styles.css">
+    <style>
+        /* Estilos existentes... */
+        
+        /* Botón de limpiar chat */
+        .btn-limpiar {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-limpiar:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+        
+        .chat-header-actions {
+            display: flex;
+            align-items: center;
+            margin-left: auto;
+        }
+        
+        /* Modal de confirmación */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .modal-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .btn-confirmar {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-cancelar {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-confirmar:hover {
+            background: #c82333;
+        }
+        
+        .btn-cancelar:hover {
+            background: #5a6268;
+        }
+        /* Estilos para tablas universitarias */
+        .tabla-universidad {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+        }
+        
+        .tabla-universidad th {
+            background-color: #4a6fa5;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        .tabla-universidad td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 0.85rem;
+        }
+        
+        .tabla-universidad tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .tabla-universidad .estado-pagado {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        .tabla-universidad .estado-pendiente {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        
+        .estadisticas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .estadistica-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+        
+        .estadistica-card .numero {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4a6fa5;
+            margin-bottom: 0.5rem;
+        }
+        
+        .estadistica-card .label {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        .reporte-section {
+            background: #e8f4fd;
+            border-left: 4px solid #4a6fa5;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        /* Botones de acción */
+        .btn-descargar {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 0.8rem;
+        }
+        
+        .btn-ver-mas {
+            background: #4a6fa5;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 0.8rem;
+        }
+        
+        .btn-descargar:hover, .btn-ver-mas:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        /* Mejoras para el chat en modo universidad */
+        .chat-header {
+            background: linear-gradient(135deg, #4a6fa5 0%, #2c5282 100%);
+        }
+        
+        .suggestion {
+            background: #4a6fa5;
+            color: white;
+            border: none;
+        }
+        
+        .suggestion:hover {
+            background: #2c5282;
+        }
+        
+        /* Ajustes para mensajes con tablas */
+        .message.with-table {
+            max-width: 95% !important;
+            padding: 1rem;
+        }
+        
+        .message-content h3 {
+            margin: 0 0 1rem 0;
+            color: #2c5282;
+            font-size: 1.1rem;
+        }
+        
+        .message-content h4 {
+            margin: 1.5rem 0 0.5rem 0;
+            color: #4a6fa5;
+            font-size: 1rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .tabla-universidad {
+                font-size: 0.8rem;
+            }
+            
+            .tabla-universidad th,
+            .tabla-universidad td {
+                padding: 8px 6px;
+            }
+            
+            .estadisticas-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+            
+            .estadistica-card {
+                padding: 0.8rem;
+            }
+            
+            .estadistica-card .numero {
+                font-size: 1.3rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .tabla-universidad {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+            .estadisticas-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>  
     <header>
-        <h1>RECIO Y MENDOZA</h1>
+        <h1>RECIO Y MENDOZA - Sistema Universitario</h1>
     </header>
     
     <div class="container">
@@ -16,27 +273,40 @@
             <div class="chat-header">
                 <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="Bot Avatar">
                 <div>
-                    <h2>ChatBot</h2>
-                    <small>En línea</small>
+                    <h2>Asistente Universitario</h2>
+                    <small>En línea - Modo Universidad</small>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="btn-limpiar" onclick="mostrarConfirmacionLimpiar()">
+                        🗑️ Limpiar Chat
+                    </button>
                 </div>
             </div>
             
             <div class="chat-messages" id="chatMessages">
                 <div class="message bot-message">
-                    ¡Hola! Soy tu asistente virtual. ¿En qué puedo ayudarte hoy?
+                    🎓 <strong>¡Bienvenido al Sistema Universitario!</strong> 
+                    <br><br>
+                    Puedo ayudarte con información académica:
+                    <br>• 📊 <strong>Estadísticas de estudiantes</strong>
+                    <br>• 📋 <strong>Lista de alumnos pendientes</strong>
+                    <br>• 🎓 <strong>Información de carreras</strong>
+                    <br>• 📄 <strong>Reportes de inscripción</strong>
+                    <br><br>
+                    <em>Ejemplos: "estadísticas", "estudiantes pendientes", "generar reporte", "ver carreras"</em>
                     <div class="message-time" id="currentTime"></div>
                 </div>
             </div>
             
             <div class="suggestions">
-                <div class="suggestion" data-question="¿Cuáles son tus servicios?">Servicios</div>
-                <div class="suggestion" data-question="¿Cómo puedo contactarlos?">Contacto</div>
-                <div class="suggestion" data-question="¿Qué horarios tienen?">Horarios</div>
-                <div class="suggestion" data-question="¿Dónde están ubicados?">Ubicación</div>
+                <div class="suggestion" data-question="Estadísticas universitarias">📊 Estadísticas</div>
+                <div class="suggestion" data-question="Estudiantes pendientes de inscripción">📋 Pendientes</div>
+                <div class="suggestion" data-question="Generar reporte de inscripciones">📄 Reporte</div>
+                <div class="suggestion" data-question="Ver carreras disponibles">🎓 Carreras</div>
             </div>
             
             <div class="chat-input">
-                <input type="text" id="userInput" placeholder="Escribe tu mensaje aquí..." autocomplete="off">
+                <input type="text" id="userInput" placeholder="Pregunta sobre estudiantes, carreras, reportes..." autocomplete="off">
                 <button id="sendButton">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -47,10 +317,575 @@
         </div>
     </div>
     
+    <!-- Modal de confirmación -->
+    <div id="modalLimpiar" class="modal">
+        <div class="modal-content">
+            <h3>¿Limpiar el chat?</h3>
+            <p>Esta acción eliminará todo el historial de la conversación actual.</p>
+            <p><strong>Esta acción no se puede deshacer.</strong></p>
+            <div class="modal-buttons">
+                <button class="btn-confirmar" onclick="limpiarChat()">Sí, limpiar</button>
+                <button class="btn-cancelar" onclick="ocultarConfirmacion()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
     <footer>
-        <p>ChatBot &copy; 2023 - Todos los derechos reservados</p>
+        <p>Sistema Universitario &copy; 2024 - RECIO Y MENDOZA</p>
     </footer>
 
-    <script src="../static/script.js"></script>
+    <!-- JavaScript actualizado con función de limpiar -->
+    <script>
+        // ... (todo tu código JavaScript existente)
+        
+        // === FUNCIONES PARA LIMPIAR EL CHAT ===
+        
+        // Mostrar modal de confirmación
+        function mostrarConfirmacionLimpiar() {
+            const modal = document.getElementById('modalLimpiar');
+            modal.style.display = 'block';
+        }
+        
+        // Ocultar modal de confirmación
+        function ocultarConfirmacion() {
+            const modal = document.getElementById('modalLimpiar');
+            modal.style.display = 'none';
+        }
+        
+        // Función principal para limpiar el chat
+        function limpiarChat() {
+            try {
+                // 1. Limpiar el localStorage
+                localStorage.removeItem('chatHistory');
+                
+                // 2. Limpiar la visualización del chat
+                const chatMessages = document.getElementById('chatMessages');
+                const initialMessage = chatMessages.querySelector('.bot-message');
+                
+                // Guardar solo el mensaje de bienvenida
+                chatMessages.innerHTML = '';
+                if (initialMessage) {
+                    chatMessages.appendChild(initialMessage.cloneNode(true));
+                } else {
+                    // Si no hay mensaje de bienvenida, crear uno nuevo
+                    const welcomeMessage = document.createElement('div');
+                    welcomeMessage.classList.add('message', 'bot-message');
+                    welcomeMessage.innerHTML = `
+                        🎓 <strong>¡Chat limpiado!</strong> 
+                        <br><br>
+                        El historial ha sido eliminado. ¿En qué puedo ayudarte?
+                        <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                    `;
+                    chatMessages.appendChild(welcomeMessage);
+                }
+                
+                // 3. Generar nueva sesión
+                const newSessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('chatSessionId', newSessionId);
+                
+                // 4. Ocultar el modal
+                ocultarConfirmacion();
+                
+                // 5. Mostrar mensaje de confirmación
+                mostrarMensajeConfirmacion();
+                
+                console.log('✅ Chat limpiado exitosamente. Nueva sesión:', newSessionId);
+                
+            } catch (error) {
+                console.error('❌ Error al limpiar el chat:', error);
+                alert('Error al limpiar el chat. Por favor, intenta nuevamente.');
+            }
+        }
+        
+        // Mostrar mensaje temporal de confirmación
+        function mostrarMensajeConfirmacion() {
+            // Crear mensaje temporal
+            const tempMessage = document.createElement('div');
+            tempMessage.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #28a745;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 4px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                z-index: 1001;
+                animation: slideIn 0.3s ease;
+            `;
+            tempMessage.textContent = '✅ Chat limpiado exitosamente';
+            
+            document.body.appendChild(tempMessage);
+            
+            // Remover después de 3 segundos
+            setTimeout(() => {
+                tempMessage.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (tempMessage.parentNode) {
+                        tempMessage.parentNode.removeChild(tempMessage);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // Cerrar modal si se hace clic fuera de él
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalLimpiar');
+            if (event.target === modal) {
+                ocultarConfirmacion();
+            }
+        }
+        
+        // Animaciones CSS para el mensaje de confirmación
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chatMessages');
+            const userInput = document.getElementById('userInput');
+            const sendButton = document.getElementById('sendButton');
+            const suggestions = document.querySelectorAll('.suggestion');
+            const currentTimeElement = document.getElementById('currentTime');
+            
+            // Generar session ID único si no existe
+            let sessionId = localStorage.getItem('chatSessionId');
+            if (!sessionId) {
+                sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('chatSessionId', sessionId);
+            }
+            
+            // Mostrar hora actual en el primer mensaje
+            const now = new Date();
+            currentTimeElement.textContent = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            // Cargar historial del chat si existe
+            loadChatHistory();
+            
+            // Función para agregar mensaje al chat (puede ser texto o tabla)
+            function addMessage(content, isUser = false, isTable = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
+                
+                if (isTable) {
+                    messageDiv.classList.add('with-table');
+                }
+                
+                const now = new Date();
+                const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                
+                if (isTable) {
+                    // Si es una tabla, insertar el HTML directamente
+                    messageDiv.innerHTML = content;
+                } else {
+                    // Mensaje normal
+                    messageDiv.innerHTML = `
+                        <div class="message-content">${content}</div>
+                        <div class="message-time">${timeString}</div>
+                    `;
+                }
+                
+                chatMessages.appendChild(messageDiv);
+                
+                // Scroll automático al último mensaje
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Guardar en localStorage para persistencia (solo mensajes normales)
+                if (!isTable) {
+                    saveMessageToHistory(content, isUser, timeString);
+                }
+            }
+            
+            // Función para crear tabla de estudiantes pendientes
+            function crearTablaEstudiantesPendientes(estudiantes) {
+                let html = `
+                <div class="message-content">
+                    <h3>📋 Estudiantes Pendientes de Inscripción</h3>
+                    <p><strong>Total: ${estudiantes.length} estudiantes</strong></p>
+                    
+                    <table class="tabla-universidad">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Nombre</th>
+                                <th>Carrera</th>
+                                <th>Semestre</th>
+                                <th>Fecha Inscripción</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                estudiantes.forEach(est => {
+                    const fecha = est.fecha_inscripcion ? new Date(est.fecha_inscripcion).toLocaleDateString() : 'N/A';
+                    html += `
+                            <tr>
+                                <td><strong>${est.matricula}</strong></td>
+                                <td>${est.nombre} ${est.apellido}</td>
+                                <td>${est.carrera}</td>
+                                <td>${est.semestre}</td>
+                                <td>${fecha}</td>
+                                <td class="estado-pendiente">❌ Pendiente</td>
+                            </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                    
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button class="btn-descargar" onclick="descargarReporte()">📥 Descargar Reporte</button>
+                        <button class="btn-ver-mas" onclick="verTodosEstudiantes()">👥 Ver Todos</button>
+                    </div>
+                </div>
+                <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                `;
+                
+                return html;
+            }
+            
+            // Función para crear cards de estadísticas
+            function crearEstadisticasCards(estadisticas) {
+                let html = `
+                <div class="message-content">
+                    <h3>📊 Estadísticas Universitarias</h3>
+                    
+                    <div class="estadisticas-grid">
+                        <div class="estadistica-card">
+                            <div class="numero">${estadisticas.total_estudiantes}</div>
+                            <div class="label">Total Estudiantes</div>
+                        </div>
+                        <div class="estadistica-card">
+                            <div class="numero">${estadisticas.inscritos_pagados}</div>
+                            <div class="label">Inscripción Pagada</div>
+                        </div>
+                        <div class="estadistica-card">
+                            <div class="numero">${estadisticas.pendientes_inscripcion}</div>
+                            <div class="label">Pendientes de Pago</div>
+                        </div>
+                    </div>
+                    
+                    <h4>🎓 Distribución por Carrera</h4>
+                    <table class="tabla-universidad">
+                        <thead>
+                            <tr>
+                                <th>Carrera</th>
+                                <th>Estudiantes</th>
+                                <th>Porcentaje</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                estadisticas.por_carrera.forEach(carrera => {
+                    const porcentaje = estadisticas.total_estudiantes > 0 ? 
+                        ((carrera.cantidad / estadisticas.total_estudiantes) * 100).toFixed(1) : '0.0';
+                    html += `
+                            <tr>
+                                <td>${carrera.carrera}</td>
+                                <td>${carrera.cantidad}</td>
+                                <td>${porcentaje}%</td>
+                            </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                `;
+                
+                return html;
+            }
+            
+            // Función para crear lista de carreras
+            function crearListaCarreras(carreras) {
+                let html = `
+                <div class="message-content">
+                    <h3>🎓 Carreras Disponibles</h3>
+                    
+                    <table class="tabla-universidad">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Carrera</th>
+                                <th>Duración</th>
+                                <th>Costo Inscripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                carreras.forEach(carrera => {
+                    html += `
+                            <tr>
+                                <td><strong>${carrera.codigo}</strong></td>
+                                <td>${carrera.nombre}</td>
+                                <td>${carrera.duracion_semestres} semestres</td>
+                                <td>$${carrera.costo_inscripcion}</td>
+                            </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                    
+                    <div class="reporte-section">
+                        <strong>💡 Información General:</strong><br>
+                        • Material didáctico digital incluido<br>
+                        • Acceso a laboratorios especializados<br>
+                        • Biblioteca virtual 24/7<br>
+                        • Seguro estudiantil gratuito
+                    </div>
+                </div>
+                <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                `;
+                
+                return html;
+            }
+            
+            // Función para crear sección de reporte
+            function crearSeccionReporte(reporte) {
+                let html = `
+                <div class="message-content">
+                    <h3>📄 Reporte Generado</h3>
+                    
+                    <div class="reporte-section">
+                        <p><strong>✅ Reporte generado exitosamente</strong></p>
+                        <p><strong>Tipo:</strong> ${reporte.tipo}</p>
+                        <p><strong>ID del Reporte:</strong> ${reporte.reporte_id}</p>
+                        <p><strong>Estudiantes en reporte:</strong> ${reporte.total_pendientes}</p>
+                        <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString()}</p>
+                    </div>
+                    
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button class="btn-descargar" onclick="descargarExcel()">📊 Descargar Excel</button>
+                        <button class="btn-descargar" onclick="descargarPDF()">📄 Descargar PDF</button>
+                        <button class="btn-ver-mas" onclick="verReporteCompleto()">👀 Ver Completo</button>
+                    </div>
+                </div>
+                <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                `;
+                
+                return html;
+            }
+            
+            // Funciones globales para los botones
+            window.descargarReporte = function() {
+                alert('📥 Descargando reporte de estudiantes pendientes...');
+                // En implementación real, aquí se generaría el archivo
+            };
+            
+            window.verTodosEstudiantes = function() {
+                addMessage('🔍 Cargando lista completa de estudiantes...', false);
+            };
+            
+            window.descargarExcel = function() {
+                alert('📊 Generando archivo Excel...');
+            };
+            
+            window.descargarPDF = function() {
+                alert('📄 Generando archivo PDF...');
+            };
+            
+            window.verReporteCompleto = function() {
+                alert('👀 Mostrando vista previa completa del reporte...');
+            };
+
+            // Función para guardar mensajes en el historial local
+            function saveMessageToHistory(message, isUser, timestamp) {
+                let chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+                chatHistory.push({
+                    message: message,
+                    isUser: isUser,
+                    timestamp: timestamp,
+                    sessionId: sessionId
+                });
+                localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+            }
+            
+            // Función para cargar historial del chat
+            function loadChatHistory() {
+                const chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+                const currentSessionHistory = chatHistory.filter(msg => msg.sessionId === sessionId);
+                
+                // Limpiar mensajes actuales excepto el primero
+                const initialMessage = chatMessages.querySelector('.bot-message');
+                chatMessages.innerHTML = '';
+                if (initialMessage) {
+                    chatMessages.appendChild(initialMessage);
+                }
+                
+                // Recargar historial
+                currentSessionHistory.forEach(msg => {
+                    addMessage(msg.message, msg.isUser);
+                });
+                
+                // Scroll al final
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Función para mostrar indicador de escritura
+            function showTypingIndicator() {
+                const typingDiv = document.createElement('div');
+                typingDiv.classList.add('message', 'bot-message');
+                typingDiv.id = 'typingIndicator';
+                typingDiv.innerHTML = `
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                `;
+                chatMessages.appendChild(typingDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Función para ocultar indicador de escritura
+            function hideTypingIndicator() {
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+            
+            // Función para enviar mensaje al backend (AJAX)
+            async function sendMessageToBackend(message) {
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            session_id: sessionId
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor');
+                    }
+                    
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Error enviando mensaje:', error);
+                    return { 
+                        success: false,
+                        bot_response: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta nuevamente.'
+                    };
+                }
+            }
+            
+            // Función principal para procesar mensajes del usuario
+            async function processUserMessage(message) {
+                // Agregar mensaje del usuario inmediatamente
+                addMessage(message, true);
+                userInput.value = '';
+                userInput.disabled = true;
+                sendButton.disabled = true;
+                
+                // Mostrar indicador de escritura
+                showTypingIndicator();
+                
+                try {
+                    // Enviar mensaje al backend
+                    const data = await sendMessageToBackend(message);
+                    
+                    // Ocultar indicador de escritura
+                    hideTypingIndicator();
+                    
+                    if (data.success) {
+                        // Procesar respuesta según el tipo de datos
+                        if (data.estadisticas) {
+                            const tablaHTML = crearEstadisticasCards(data.estadisticas);
+                            addMessage(tablaHTML, false, true);
+                        } else if (data.estudiantes) {
+                            const tablaHTML = crearTablaEstudiantesPendientes(data.estudiantes);
+                            addMessage(tablaHTML, false, true);
+                        } else if (data.carreras) {
+                            const tablaHTML = crearListaCarreras(data.carreras);
+                            addMessage(tablaHTML, false, true);
+                        } else if (data.reporte) {
+                            const tablaHTML = crearSeccionReporte(data.reporte);
+                            addMessage(tablaHTML, false, true);
+                        } else {
+                            // Respuesta normal del bot
+                            addMessage(data.bot_response, false);
+                        }
+                    } else {
+                        addMessage(data.bot_response || 'Error en la respuesta del servidor', false);
+                    }
+                    
+                } catch (error) {
+                    hideTypingIndicator();
+                    addMessage('Lo siento, hubo un error al procesar tu mensaje.', false);
+                } finally {
+                    // Rehabilitar entrada
+                    userInput.disabled = false;
+                    sendButton.disabled = false;
+                    userInput.focus();
+                }
+            }
+            
+            // Evento para enviar mensaje al hacer clic en el botón
+            sendButton.addEventListener('click', function() {
+                const message = userInput.value.trim();
+                if (message) {
+                    processUserMessage(message);
+                }
+            });
+            
+            // Evento para enviar mensaje al presionar Enter
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const message = userInput.value.trim();
+                    if (message) {
+                        processUserMessage(message);
+                    }
+                }
+            });
+            
+            // Evento para las sugerencias
+            suggestions.forEach(suggestion => {
+                suggestion.addEventListener('click', function() {
+                    const question = this.getAttribute('data-question');
+                    processUserMessage(question);
+                });
+            });
+            
+            // Focus automático en el input al cargar
+            userInput.focus();
+        });
+    </script>
 </body>
 </html>
