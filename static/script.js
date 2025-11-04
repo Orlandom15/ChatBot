@@ -99,6 +99,98 @@ document.addEventListener('DOMContentLoaded', function() {
         return html;
     }
     
+    // 🔥 NUEVA FUNCIÓN: Tabla de reporte completo con todos los estudiantes
+    function crearTablaReporteCompleto(estudiantes) {
+        const totalEstudiantes = estudiantes.length;
+        const pagados = estudiantes.filter(est => est.estado_pago.includes('✅')).length;
+        const pendientes = estudiantes.filter(est => est.estado_pago.includes('❌')).length;
+        
+        let html = `
+        <div class="message-content">
+            <h3>📊 REPORTE COMPLETO - TODOS LOS ESTUDIANTES</h3>
+            
+            <div class="estadisticas-rapidas" style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                    <div>
+                        <strong>👥 Total:</strong> ${totalEstudiantes}
+                    </div>
+                    <div style="color: #28a745;">
+                        <strong>✅ Pagados:</strong> ${pagados}
+                    </div>
+                    <div style="color: #dc3545;">
+                        <strong>❌ Pendientes:</strong> ${pendientes}
+                    </div>
+                    <div>
+                        <strong>📅 Fecha:</strong> ${new Date().toLocaleDateString()}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="filtros-estudiantes">
+                <input type="text" id="filtroReporte" placeholder="🔍 Buscar por nombre, matrícula o carrera..." 
+                       style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            
+            <table class="tabla-universidad tabla-reporte-completo">
+                <thead>
+                    <tr>
+                        <th>Matrícula</th>
+                        <th>Nombre Completo</th>
+                        <th>Carrera</th>
+                        <th>Semestre</th>
+                        <th>Email</th>
+                        <th>Teléfono</th>
+                        <th>Estado Pago</th>
+                        <th>Fecha Registro</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        estudiantes.forEach(est => {
+            const fechaRegistro = est.fecha_registro ? new Date(est.fecha_registro).toLocaleDateString() : 'N/A';
+            const claseEstado = est.estado_pago.includes('✅') ? 'estado-pagado' : 'estado-pendiente';
+            
+            html += `
+                    <tr class="fila-reporte">
+                        <td><strong>${est.matricula}</strong></td>
+                        <td>${est.nombre_completo}</td>
+                        <td>${est.carrera}</td>
+                        <td>${est.semestre}</td>
+                        <td>${est.email || 'N/A'}</td>
+                        <td>${est.telefono || 'N/A'}</td>
+                        <td class="${claseEstado}">${est.estado_pago}</td>
+                        <td>${fechaRegistro}</td>
+                    </tr>
+            `;
+        });
+        
+        html += `
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="btn-descargar" onclick="descargarReporteCompleto()">📥 Descargar Reporte Completo</button>
+                <button class="btn-ver-mas" onclick="filtrarSoloPendientesReporte()">❌ Ver Solo Pendientes</button>
+                <button class="btn-ver-mas" onclick="filtrarSoloPagadosReporte()">✅ Ver Solo Pagados</button>
+                <button class="btn-ver-mas" onclick="mostrarTodosReporte()">👥 Mostrar Todos</button>
+            </div>
+            
+            <div style="margin-top: 1rem; font-size: 0.8rem; color: #666;">
+                💡 <strong>Consejos:</strong> Usa el campo de búsqueda para filtrar. Haz clic en los botones para ver estados específicos.
+            </div>
+        </div>
+        <div class="message-time">${new Date().toLocaleTimeString()}</div>
+        `;
+        
+        // Agregar el script de filtrado después de insertar el HTML
+        setTimeout(() => {
+            inicializarFiltroReporte();
+        }, 100);
+        
+        return html;
+    }
+    
     // Función para crear cards de estadísticas
     function crearEstadisticasCards(estadisticas) {
         let html = `
@@ -230,14 +322,87 @@ document.addEventListener('DOMContentLoaded', function() {
         return html;
     }
     
-    // Funciones globales para los botones (simuladas)
-    window.descargarReporte = function() {
-        alert('📥 Función de descarga activada - En una implementación real, esto generaría un archivo Excel');
+    window.verTodosEstudiantes = async function() {
+        try {
+            addMessage('🔍 Cargando reporte completo de todos los estudiantes...', false);
+            showTypingIndicator();
+            
+            // 🔥 CAMBIA ESTA URL por tu endpoint real
+            const response = await fetch('/api/estudiantes/todos'); // o la ruta correcta
+            const data = await response.json();
+            
+            hideTypingIndicator();
+            
+            if (data.success && data.estudiantes && data.estudiantes.length > 0) {
+                const tablaHTML = crearTablaReporteCompleto(data.estudiantes);
+                addMessage(tablaHTML, false, true);
+            } else {
+                addMessage('❌ No se pudieron cargar los estudiantes para el reporte.', false);
+            }
+            
+        } catch (error) {
+            hideTypingIndicator();
+            console.error('Error cargando reporte:', error);
+            addMessage('❌ Error al cargar el reporte completo. Verifica la conexión con el servidor.', false);
+        }
     };
     
-    window.verTodosEstudiantes = function() {
-        addMessage('🔍 Mostrando todos los estudiantes registrados en el sistema...', false);
-        // Aquí iría la lógica para cargar todos los estudiantes
+    window.descargarReporteCompleto = function() {
+        alert('📥 Descargando reporte completo en Excel...');
+        // Aquí iría la lógica real para descargar Excel
+    };
+    
+    window.filtrarSoloPendientesReporte = function() {
+        const filas = document.querySelectorAll('.fila-reporte');
+        filas.forEach(fila => {
+            if (fila.textContent.includes('❌ Pendiente')) {
+                fila.style.display = '';
+            } else {
+                fila.style.display = 'none';
+            }
+        });
+    };
+    
+    window.filtrarSoloPagadosReporte = function() {
+        const filas = document.querySelectorAll('.fila-reporte');
+        filas.forEach(fila => {
+            if (fila.textContent.includes('✅ Pagado')) {
+                fila.style.display = '';
+            } else {
+                fila.style.display = 'none';
+            }
+        });
+    };
+    
+    window.mostrarTodosReporte = function() {
+        const filas = document.querySelectorAll('.fila-reporte');
+        filas.forEach(fila => {
+            fila.style.display = '';
+        });
+    };
+    
+    // Función para inicializar el filtro del reporte
+    function inicializarFiltroReporte() {
+        const filtroInput = document.getElementById('filtroReporte');
+        if (filtroInput) {
+            filtroInput.addEventListener('input', function(e) {
+                const texto = e.target.value.toLowerCase();
+                const filas = document.querySelectorAll('.fila-reporte');
+                
+                filas.forEach(fila => {
+                    const textoFila = fila.textContent.toLowerCase();
+                    if (textoFila.includes(texto)) {
+                        fila.style.display = '';
+                    } else {
+                        fila.style.display = 'none';
+                    }
+                });
+            });
+        }
+    }
+    
+    window.descargarReporte = function() {
+        alert('📥 Función de descarga activada - En una implementación real, esto generaría un archivo Excel');
     };
     
     window.descargarExcel = function() {
@@ -249,7 +414,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     window.verReporteCompleto = function() {
-        alert('👀 Abriendo vista previa del reporte completo...');
+        // 🔥 ESTA ES LA FUNCIÓN QUE SE EJECUTA AL HACER CLIC EN "REPORTE"
+        window.verTodosEstudiantes();
     };
 
     // Función para guardar mensajes en el historial local
@@ -331,39 +497,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         }
     }
-    // Función avanzada con opciones
-function limpiarChatAvanzado(opciones = {}) {
-    const config = {
-        limpiarLocalStorage: true,
-        limpiarVisualizacion: true,
-        mantenerMensajeBienvenida: true,
-        generarNuevaSesion: true,
-        mostrarConfirmacion: true,
-        ...opciones
-    };
-    
-    if (config.limpiarLocalStorage) {
-        localStorage.removeItem('chatHistory');
-    }
-    
-    if (config.limpiarVisualizacion) {
-        const chatMessages = document.getElementById('chatMessages');
-        // ... lógica de limpieza
-    }
-    
-    if (config.generarNuevaSesion) {
-        const newSessionId = 'session-' + Date.now();
-        localStorage.setItem('chatSessionId', newSessionId);
-    }
-    
-    if (config.mostrarConfirmacion) {
-        mostrarMensajeConfirmacion();
-    }
-}
 
-// Ejemplo de uso:
-// limpiarChatAvanzado({ mantenerMensajeBienvenida: false });
-    
     // Función principal para procesar mensajes del usuario
     async function processUserMessage(message) {
         // Agregar mensaje del usuario inmediatamente
@@ -395,6 +529,10 @@ function limpiarChatAvanzado(opciones = {}) {
                     addMessage(tablaHTML, false, true);
                 } else if (data.intent === 'reporte_generado' && data.reporte) {
                     const tablaHTML = crearSeccionReporte(data.reporte);
+                    addMessage(tablaHTML, false, true);
+                } else if (data.intent === 'todos_estudiantes' && data.estudiantes) {
+                    // 🔥 NUEVO: Procesar reporte completo
+                    const tablaHTML = crearTablaReporteCompleto(data.estudiantes);
                     addMessage(tablaHTML, false, true);
                 } else {
                     // Respuesta normal del bot

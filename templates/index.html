@@ -554,17 +554,17 @@
                     `;
                 });
                 
-                html += `
-                        </tbody>
-                    </table>
+                // html += `
+                //         </tbody>
+                //     </table>
                     
-                    <div style="margin-top: 1rem; text-align: center;">
-                        <button class="btn-descargar" onclick="descargarReporte()">📥 Descargar Reporte</button>
-                        <button class="btn-ver-mas" onclick="verTodosEstudiantes()">👥 Ver Todos</button>
-                    </div>
-                </div>
-                <div class="message-time">${new Date().toLocaleTimeString()}</div>
-                `;
+                //     <div style="margin-top: 1rem; text-align: center;">
+                //         <button class="btn-descargar" onclick="descargarReporte()">📥 Descargar Reporte</button>
+                //         <button class="btn-ver-mas" onclick="verTodosEstudiantes()">👥 Ver Todos</button>
+                //     </div>
+                // </div>
+                // <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                // `;
                 
                 return html;
             }
@@ -689,6 +689,7 @@
                         <button class="btn-descargar" onclick="descargarExcel()">📊 Descargar Excel</button>
                         <button class="btn-descargar" onclick="descargarPDF()">📄 Descargar PDF</button>
                         <button class="btn-ver-mas" onclick="verReporteCompleto()">👀 Ver Completo</button>
+                        
                     </div>
                 </div>
                 <div class="message-time">${new Date().toLocaleTimeString()}</div>

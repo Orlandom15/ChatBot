@@ -154,11 +154,25 @@ def get_carreras_universidad():
         print(f"❌ Error en /api/universidad/carreras: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/universidad/estudiantes/todos')
+def get_todos_estudiantes():
+    """Endpoint directo para obtener TODOS los estudiantes"""
+    try:
+        limit = request.args.get('limit', 200, type=int)
+        estudiantes = db.get_todos_estudiantes(limit)
+        
+        print(f"📊 Obtenidos {len(estudiantes)} estudiantes (todos)")
+        
+        return jsonify({
+            'success': True,
+            'estudiantes': estudiantes,
+            'total': len(estudiantes),
+            'limit': limit
+        })
+    except Exception as e:
+        print(f"❌ Error en /api/universidad/estudiantes/todos: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
 if __name__ == '__main__':
     print("🚀 ChatBot Universitario funcionando en http://localhost:5000")
-    print("📊 Endpoints disponibles:")
-    print("   POST /chat                          - Chat principal")
-    print("   GET  /api/universidad/estadisticas  - Estadísticas")
-    print("   GET  /api/universidad/estudiantes/pendientes - Estudiantes pendientes")
-    print("   GET  /api/universidad/carreras      - Carreras")
     app.run(debug=True, port=5000)
