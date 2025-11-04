@@ -2,6 +2,24 @@ from flask import Flask, render_template, request, jsonify
 import uuid
 from datetime import datetime
 from config.database import NeonDatabase
+# tests/test_unit.py
+import unittest
+from app import app, get_bot_response, save_conversation
+
+class TestChatbot(unittest.TestCase):
+    def test_bot_response_greeting(self):
+        response, intent, confidence = get_bot_response("hola")
+        self.assertEqual(intent, "greeting")
+        self.assertIn("Hola", response)
+    
+    def test_save_conversation(self):
+        result = save_conversation("test-session", "test", "respuesta", "test")
+        self.assertTrue(result)
+    
+    def test_message_filtering(self):
+        # Probar que mensajes genéricos no se guardan
+        self.assertFalse(should_save_message("ok", "generic"))
+
 
 app = Flask(__name__)
 db = NeonDatabase()
