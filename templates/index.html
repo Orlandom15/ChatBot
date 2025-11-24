@@ -301,7 +301,7 @@
             <div class="suggestions">
                 <div class="suggestion" data-question="Estadísticas universitarias">📊 Estadísticas</div>
                 <div class="suggestion" data-question="Estudiantes pendientes de inscripción">📋 Pendientes</div>
-                <div class="suggestion" data-question="Generar reporte de inscripciones">📄 Reporte</div>
+                <div class="suggestion" data-question="Generar reporte">📄 Reporte Completo</div>
                 <div class="suggestion" data-question="Ver carreras disponibles">🎓 Carreras</div>
             </div>
             
@@ -334,10 +334,8 @@
         <p>Sistema Universitario &copy; 2024 - RECIO Y MENDOZA</p>
     </footer>
 
-    <!-- JavaScript actualizado con función de limpiar -->
+    <!-- JavaScript actualizado -->
     <script>
-        // ... (todo tu código JavaScript existente)
-        
         // === FUNCIONES PARA LIMPIAR EL CHAT ===
         
         // Mostrar modal de confirmación
@@ -519,11 +517,11 @@
                 }
             }
             
-            // Función para crear tabla de estudiantes pendientes
-            function crearTablaEstudiantesPendientes(estudiantes) {
+            // Función para crear tabla de estudiantes (AHORA PARA TODOS LOS ESTUDIANTES)
+            function crearTablaEstudiantes(estudiantes, titulo = "Estudiantes") {
                 let html = `
                 <div class="message-content">
-                    <h3>📋 Estudiantes Pendientes de Inscripción</h3>
+                    <h3>👥 ${titulo}</h3>
                     <p><strong>Total: ${estudiantes.length} estudiantes</strong></p>
                     
                     <table class="tabla-universidad">
@@ -534,7 +532,7 @@
                                 <th>Carrera</th>
                                 <th>Semestre</th>
                                 <th>Fecha Inscripción</th>
-                                <th>Estado</th>
+                                <th>Estado Pago</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -542,6 +540,10 @@
                 
                 estudiantes.forEach(est => {
                     const fecha = est.fecha_inscripcion ? new Date(est.fecha_inscripcion).toLocaleDateString() : 'N/A';
+                    const estado = est.inscripcion_pagada ? 
+                        '<span class="estado-pagado">✅ Pagado</span>' : 
+                        '<span class="estado-pendiente">❌ Pendiente</span>';
+                    
                     html += `
                             <tr>
                                 <td><strong>${est.matricula}</strong></td>
@@ -549,22 +551,22 @@
                                 <td>${est.carrera}</td>
                                 <td>${est.semestre}</td>
                                 <td>${fecha}</td>
-                                <td class="estado-pendiente">❌ Pendiente</td>
+                                <td>${estado}</td>
                             </tr>
                     `;
                 });
                 
-                // html += `
-                //         </tbody>
-                //     </table>
+                html += `
+                        </tbody>
+                    </table>
                     
-                //     <div style="margin-top: 1rem; text-align: center;">
-                //         <button class="btn-descargar" onclick="descargarReporte()">📥 Descargar Reporte</button>
-                //         <button class="btn-ver-mas" onclick="verTodosEstudiantes()">👥 Ver Todos</button>
-                //     </div>
-                // </div>
-                // <div class="message-time">${new Date().toLocaleTimeString()}</div>
-                // `;
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button class="btn-descargar" onclick="descargarReporte()">📥 Descargar Excel</button>
+                        <button class="btn-ver-mas" onclick="verMasEstudiantes()">📊 Ver Estadísticas</button>
+                    </div>
+                </div>
+                <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                `;
                 
                 return html;
             }
@@ -671,25 +673,24 @@
                 return html;
             }
             
-            // Función para crear sección de reporte
-            function crearSeccionReporte(reporte) {
+            // Función para crear sección de reporte COMPLETO
+            function crearSeccionReporteCompleto(reporte) {
                 let html = `
                 <div class="message-content">
-                    <h3>📄 Reporte Generado</h3>
+                    <h3>📊 Reporte Completo de Estudiantes</h3>
                     
                     <div class="reporte-section">
                         <p><strong>✅ Reporte generado exitosamente</strong></p>
-                        <p><strong>Tipo:</strong> ${reporte.tipo}</p>
+                        <p><strong>Tipo:</strong> ${reporte.tipo || 'Reporte Completo'}</p>
                         <p><strong>ID del Reporte:</strong> ${reporte.reporte_id}</p>
-                        <p><strong>Estudiantes en reporte:</strong> ${reporte.total_pendientes}</p>
+                        <p><strong>Total de estudiantes:</strong> ${reporte.total_estudiantes || reporte.estudiantes.length}</p>
                         <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString()}</p>
                     </div>
                     
                     <div style="margin-top: 1rem; text-align: center;">
                         <button class="btn-descargar" onclick="descargarExcel()">📊 Descargar Excel</button>
                         <button class="btn-descargar" onclick="descargarPDF()">📄 Descargar PDF</button>
-                        <button class="btn-ver-mas" onclick="verReporteCompleto()">👀 Ver Completo</button>
-                        
+                        <button class="btn-ver-mas" onclick="verEstadisticasReporte()">📈 Ver Estadísticas</button>
                     </div>
                 </div>
                 <div class="message-time">${new Date().toLocaleTimeString()}</div>
@@ -700,12 +701,13 @@
             
             // Funciones globales para los botones
             window.descargarReporte = function() {
-                alert('📥 Descargando reporte de estudiantes pendientes...');
+                alert('📥 Descargando reporte de estudiantes...');
                 // En implementación real, aquí se generaría el archivo
             };
             
-            window.verTodosEstudiantes = function() {
+            window.verMasEstudiantes = function() {
                 addMessage('🔍 Cargando lista completa de estudiantes...', false);
+                // Aquí podrías hacer otra llamada al backend
             };
             
             window.descargarExcel = function() {
@@ -716,8 +718,8 @@
                 alert('📄 Generando archivo PDF...');
             };
             
-            window.verReporteCompleto = function() {
-                alert('👀 Mostrando vista previa completa del reporte...');
+            window.verEstadisticasReporte = function() {
+                addMessage('📈 Cargando estadísticas del reporte...', false);
             };
 
             // Función para guardar mensajes en el historial local
@@ -825,20 +827,34 @@
                     // Ocultar indicador de escritura
                     hideTypingIndicator();
                     
+                    // DEBUG: Mostrar datos recibidos en consola
+                    console.log('📦 DATOS RECIBIDOS DEL BACKEND:', data);
+                    
                     if (data.success) {
                         // Procesar respuesta según el tipo de datos
                         if (data.estadisticas) {
                             const tablaHTML = crearEstadisticasCards(data.estadisticas);
                             addMessage(tablaHTML, false, true);
-                        } else if (data.estudiantes) {
-                            const tablaHTML = crearTablaEstudiantesPendientes(data.estudiantes);
+                        } else if (data.estudiantes && data.estudiantes.length > 0) {
+                            // ✅ MOSTRAR TABLA CON TODOS LOS ESTUDIANTES
+                            const titulo = data.intent === 'inscripciones_pendientes' ? 
+                                '📋 Estudiantes Pendientes de Inscripción' : 
+                                '👥 Todos los Estudiantes';
+                            const tablaHTML = crearTablaEstudiantes(data.estudiantes, titulo);
                             addMessage(tablaHTML, false, true);
                         } else if (data.carreras) {
                             const tablaHTML = crearListaCarreras(data.carreras);
                             addMessage(tablaHTML, false, true);
                         } else if (data.reporte) {
-                            const tablaHTML = crearSeccionReporte(data.reporte);
-                            addMessage(tablaHTML, false, true);
+                            // ✅ REPORTE COMPLETO: Mostrar información del reporte Y la tabla de estudiantes
+                            const reporteHTML = crearSeccionReporteCompleto(data.reporte);
+                            addMessage(reporteHTML, false, true);
+                            
+                            // Si el reporte incluye estudiantes, mostrar la tabla también
+                            if (data.reporte.estudiantes && data.reporte.estudiantes.length > 0) {
+                                const tablaHTML = crearTablaEstudiantes(data.reporte.estudiantes, '📊 Estudiantes del Reporte');
+                                addMessage(tablaHTML, false, true);
+                            }
                         } else {
                             // Respuesta normal del bot
                             addMessage(data.bot_response, false);

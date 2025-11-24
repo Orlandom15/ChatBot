@@ -59,10 +59,12 @@ def chat():
         
         # Consulta de reportes
         elif any(palabra in user_lower for palabra in ['reporte', 'archivo', 'descargar', 'generar']):
-            print("📄 Generando reporte...")
-            reporte = db.generar_reporte_inscripciones()
+            print("📄 Generando reporte COMPLETO de estudiantes...")
+            
+            # ✅ Usar el NUEVO método que obtiene TODOS los estudiantes
+            reporte = db.generar_reporte_completo_estudiantes()
             response_data['reporte'] = reporte
-            print(f"✅ Reporte generado: {reporte.get('reporte_id', 'N/A')}")
+            print(f"✅ Reporte COMPLETO generado: {reporte.get('total_estudiantes', 0)} estudiantes")
         
         # Guardar conversación
         if session_id:

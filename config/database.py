@@ -1,4 +1,5 @@
 import os
+import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
@@ -64,6 +65,70 @@ class NeonDatabase:
         except Exception as e:
             print(f"❌ Error en test de conexión: {e}")
             return False
+
+    def diagnosticar_estudiantes(self):
+        """Diagnóstico completo de los estudiantes en la base de datos"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            print("🔍 **DIAGNÓSTICO DE ESTUDIANTES**")
+            
+            # 1. Total de estudiantes
+            cur.execute('SELECT COUNT(*) as total FROM estudiantes')
+            total = cur.fetchone()['total']
+            print(f"📊 Total de estudiantes: {total}")
+            
+            # 2. Estudiantes por estado de pago
+            cur.execute('''
+                SELECT 
+                    inscripcion_pagada,
+                    COUNT(*) as cantidad
+                FROM estudiantes 
+                GROUP BY inscripcion_pagada
+            ''')
+            estados = cur.fetchall()
+            print("💰 Estado de pagos:")
+            for estado in estados:
+                pagado = "✅ PAGADO" if estado['inscripcion_pagada'] else "❌ PENDIENTE"
+                print(f"   {pagado}: {estado['cantidad']} estudiantes")
+            
+            # 3. Listar algunos estudiantes de ejemplo
+            cur.execute('''
+                SELECT matricula, nombre, apellido, carrera, inscripcion_pagada
+                FROM estudiantes 
+                ORDER BY inscripcion_pagada DESC, matricula
+                LIMIT 5
+            ''')
+            ejemplos = cur.fetchall()
+            print("👥 Ejemplos de estudiantes:")
+            for est in ejemplos:
+                estado = "✅ PAGADO" if est['inscripcion_pagada'] else "❌ PENDIENTE"
+                print(f"   {est['matricula']} - {est['nombre']} {est['apellido']} - {est['carrera']} - {estado}")
+            
+            # 4. Ver estructura de la tabla
+            cur.execute('''
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = 'estudiantes'
+            ''')
+            columnas = cur.fetchall()
+            print("🗃️ Estructura de la tabla estudiantes:")
+            for col in columnas:
+                print(f"   {col['column_name']} ({col['data_type']})")
+            
+            cur.close()
+            conn.close()
+            
+            return {
+                'total_estudiantes': total,
+                'estados_pago': estados,
+                'ejemplos': ejemplos
+            }
+            
+        except Exception as e:
+            print(f"❌ Error en diagnóstico: {e}")
+            return {}
 
     def get_bot_response(self, user_message):
         """Obtener respuesta del bot - EXPANDIDO PARA UNIVERSIDAD"""
@@ -230,25 +295,60 @@ class NeonDatabase:
             return "Error obteniendo información de inscripciones.", "error", 0.0
 
     def _procesar_reportes(self, user_message):
-        """Procesar solicitudes de reportes"""
+        """Procesar solicitudes de reportes - MODIFICADO PARA MOSTRAR TODOS LOS ESTUDIANTES"""
         try:
-            if 'inscripción' in user_message or 'inscripcion' in user_message:
-                reporte = self.generar_reporte_inscripciones()
+            user_lower = user_message.lower()
+            
+            # Detectar tipo de reporte solicitado
+            if any(palabra in user_lower for palabra in ['inscripción', 'inscripcion', 'pago', 'pendiente']):
+                # Reporte específico de pendientes
+                estudiantes_pendientes = self.get_estudiantes_pendientes_inscripcion()
                 
-                respuesta = f"📄 **Reporte generado exitosamente**\n\n"
-                respuesta += f"• **Tipo:** Inscripciones pendientes\n"
-                respuesta += f"• **Estudiantes pendientes:** {reporte['total_pendientes']}\n"
+                respuesta = f"📄 **Reporte de INSCRIPCIONES PENDIENTES**\n\n"
+                respuesta += f"• **Estudiantes pendientes:** {len(estudiantes_pendientes)}\n"
+                respuesta += f"• **Fecha de generación:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+                
+                if estudiantes_pendientes:
+                    respuesta += "📋 **Lista de estudiantes pendientes:**\n"
+                    for i, est in enumerate(estudiantes_pendientes[:5], 1):
+                        respuesta += f"{i}. {est['matricula']} - {est['nombre']} {est['apellido']}\n"
+                    
+                    if len(estudiantes_pendientes) > 5:
+                        respuesta += f"\n📝 *Y {len(estudiantes_pendientes) - 5} estudiantes más...*"
+                else:
+                    respuesta += "🎉 **¡No hay estudiantes pendientes!**"
+                
+                return respuesta, "reporte_pendientes", 0.9
+            
+            else:
+                # ✅ REPORTE COMPLETO por defecto (todos los estudiantes)
+                reporte = self.generar_reporte_completo_estudiantes()
+                
+                respuesta = f"📄 **📊 REPORTE COMPLETO DE ESTUDIANTES**\n\n"
+                respuesta += f"• **Total de estudiantes:** {reporte['total_estudiantes']}\n"
+                respuesta += f"• **Inscripción pagada:** {reporte['estudiantes_pagados']}\n"
+                respuesta += f"• **Pendientes de pago:** {reporte['estudiantes_pendientes']}\n"
                 respuesta += f"• **ID del reporte:** {reporte['reporte_id']}\n"
                 respuesta += f"• **Fecha:** {reporte['fecha_generacion'][:10]}\n\n"
-                respuesta += "💡 *El reporte está listo para descargar*"
                 
-                return respuesta, "reporte_generado", 0.9
-            
-            return "Puedo generar reportes de: inscripciones pendientes, estudiantes por carrera, estadísticas generales.", "reportes", 0.8
-            
+                # Mostrar resumen por carreras
+                if reporte['estudiantes']:
+                    carreras = {}
+                    for est in reporte['estudiantes']:
+                        carrera = est['carrera']
+                        carreras[carrera] = carreras.get(carrera, 0) + 1
+                    
+                    respuesta += "🎓 **Distribución por carrera:**\n"
+                    for carrera, cantidad in list(carreras.items())[:5]:
+                        respuesta += f"  • {carrera}: {cantidad} estudiantes\n"
+                
+                respuesta += "\n💡 *El reporte completo está listo para descargar*"
+                
+                return respuesta, "reporte_completo", 0.9
+                
         except Exception as e:
             print(f"❌ Error generando reporte: {e}")
-            return "Error generando el reporte.", "error", 0.0
+            return "Error generando el reporte. Por favor intenta nuevamente.", "error", 0.0
 
     def _procesar_carreras(self, user_message):
         """Procesar consultas sobre carreras"""
@@ -346,6 +446,48 @@ class NeonDatabase:
             print(f"❌ Error obteniendo estudiantes pendientes: {e}")
             return []
 
+    def get_todos_estudiantes(self, limit=500):
+        """Obtener TODOS los estudiantes - VERSIÓN DIAGNÓSTICA"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            print(f"🔍 Ejecutando consulta para TODOS los estudiantes (límite: {limit})")
+            
+            cur.execute('''
+                SELECT 
+                    matricula, 
+                    nombre, 
+                    apellido, 
+                    carrera, 
+                    semestre, 
+                    fecha_inscripcion,
+                    inscripcion_pagada,
+                    COALESCE(email, 'No especificado') as email,
+                    COALESCE(telefono, 'No especificado') as telefono
+                FROM estudiantes 
+                ORDER BY carrera, nombre, apellido
+                LIMIT %s
+            ''', (limit,))
+            
+            estudiantes = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            print(f"📊 CONSULTA get_todos_estudiantes retornó: {len(estudiantes)} estudiantes")
+            
+            # Verificar algunos registros
+            if estudiantes:
+                for i, est in enumerate(estudiantes[:3]):
+                    estado = "PAGADO" if est['inscripcion_pagada'] else "PENDIENTE"
+                    print(f"   Ejemplo {i+1}: {est['matricula']} - {estado}")
+            
+            return estudiantes
+            
+        except Exception as e:
+            print(f"❌ Error en get_todos_estudiantes: {e}")
+            return []
+
     def get_estudiantes_por_carrera(self, carrera=None):
         """Obtener estudiantes filtrados por carrera"""
         try:
@@ -429,6 +571,96 @@ class NeonDatabase:
             print(f"❌ Error generando reporte: {e}")
             return {}
 
+    def generar_reporte_completo_estudiantes(self):
+            """✅ GENERAR REPORTE DE TODOS LOS ESTUDIANTES - VERSIÓN CORREGIDA"""
+            try:
+                print("🔄 Iniciando generación de reporte COMPLETO...")
+                
+                conn = self.get_connection()
+                cur = conn.cursor()
+                
+                # Obtener TODOS los estudiantes sin filtros
+                cur.execute('''
+                    SELECT 
+                        matricula, 
+                        nombre, 
+                        apellido, 
+                        carrera, 
+                        semestre, 
+                        fecha_inscripcion,
+                        inscripcion_pagada,
+                        COALESCE(email, 'No especificado') as email,
+                        COALESCE(telefono, 'No especificado') as telefono
+                    FROM estudiantes 
+                    ORDER BY carrera, nombre, apellido
+                    LIMIT 1000
+                ''')
+                
+                todos_estudiantes = cur.fetchall()
+                
+                print(f"📊 Estudiantes obtenidos en consulta SQL: {len(todos_estudiantes)}")
+                
+                # Contadores manuales para verificar
+                total_estudiantes = len(todos_estudiantes)
+                estudiantes_pagados = 0
+                estudiantes_pendientes = 0
+                
+                for est in todos_estudiantes:
+                    if est['inscripcion_pagada']:
+                        estudiantes_pagados += 1
+                    else:
+                        estudiantes_pendientes += 1
+                
+                print(f"✅ Estudiantes pagados: {estudiantes_pagados}")
+                print(f"❌ Estudiantes pendientes: {estudiantes_pendientes}")
+                
+                # ID del reporte
+                reporte_id = f"reporte_completo_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                
+                # ✅ CORRECCIÓN: Convertir el diccionario a JSON string para PostgreSQL
+                parametros_json = {
+                    'total_estudiantes': total_estudiantes,
+                    'estudiantes_pagados': estudiantes_pagados,
+                    'estudiantes_pendientes': estudiantes_pendientes
+                }
+                
+                # Guardar metadata del reporte
+                cur.execute('''
+                    INSERT INTO reportes_generados (tipo_reporte, parametros, generado_por)
+                    VALUES (%s, %s, %s)
+                ''', (
+                    'reporte_completo_estudiantes', 
+                    json.dumps(parametros_json),  # ✅ Convertir a JSON string
+                    'sistema_chatbot'
+                ))
+                
+                conn.commit()
+                cur.close()
+                conn.close()
+                
+                resultado = {
+                    'reporte_id': reporte_id,
+                    'tipo': 'reporte_completo_estudiantes',
+                    'estudiantes': todos_estudiantes,
+                    'total_estudiantes': total_estudiantes,
+                    'estudiantes_pagados': estudiantes_pagados,
+                    'estudiantes_pendientes': estudiantes_pendientes,
+                    'fecha_generacion': datetime.now().isoformat()
+                }
+                
+                print(f"🎉 Reporte COMPLETO generado exitosamente:")
+                print(f"   - ID: {reporte_id}")
+                print(f"   - Total: {total_estudiantes}")
+                print(f"   - Pagados: {estudiantes_pagados}")
+                print(f"   - Pendientes: {estudiantes_pendientes}")
+                
+                return resultado
+                    
+            except Exception as e:
+                print(f"❌ Error generando reporte completo: {e}")
+                import traceback
+                print(f"🔍 Traceback: {traceback.format_exc()}")
+                return {}
     def buscar_estudiante(self, criterio, valor):
         """Buscar estudiante por diferentes criterios"""
         try:
@@ -507,7 +739,7 @@ class NeonDatabase:
         # ✅ SÍ guardar mensajes con intenciones valiosas
         valuable_intents = {'services', 'contact', 'hours', 'location', 'pricing', 
                            'estadisticas_universidad', 'inscripciones_pendientes', 
-                           'reporte_generado', 'carreras', 'estudiantes'}
+                           'reporte_generado', 'carreras', 'estudiantes', 'reporte_completo'}
         if intent in valuable_intents:
             return True
         
