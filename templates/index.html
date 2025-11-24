@@ -700,27 +700,42 @@
             }
             
             // Funciones globales para los botones
-            window.descargarReporte = function() {
-                alert('📥 Descargando reporte de estudiantes...');
-                // En implementación real, aquí se generaría el archivo
-            };
-            
-            window.verMasEstudiantes = function() {
-                addMessage('🔍 Cargando lista completa de estudiantes...', false);
-                // Aquí podrías hacer otra llamada al backend
-            };
-            
+// Reemplaza las funciones globales existentes por estas:
+
+            // Funciones globales para los botones - ACTUALIZADAS
             window.descargarExcel = function() {
-                alert('📊 Generando archivo Excel...');
+                console.log('📊 Descargando Excel...');
+                // Descargar archivo Excel
+                window.open('/descargar/excel', '_blank');
             };
-            
+
             window.descargarPDF = function() {
-                alert('📄 Generando archivo PDF...');
+                console.log('📄 Descargando PDF...');
+                // Descargar archivo PDF
+                window.open('/descargar/pdf', '_blank');
+            };
+
+            window.descargarReporte = function() {
+                console.log('📥 Descargando reporte...');
+                // Descargar reporte específico (pendientes o completo según contexto)
+                const currentMessage = document.querySelector('.message.with-table:last-child h3');
+                if (currentMessage && currentMessage.textContent.includes('Pendientes')) {
+                    window.open('/descargar/reporte/pendientes', '_blank');
+                } else {
+                    window.open('/descargar/excel', '_blank');
+                }
+            };
+
+            window.verEstadisticasReporte = function() {
+                addMessage('📈 Generando estadísticas detalladas del reporte...', false);
+                // Aquí podrías hacer otra llamada al backend para estadísticas específicas
+            };
+
+            window.verMasEstudiantes = function() {
+                addMessage('🔍 Cargando información adicional de estudiantes...', false);
             };
             
-            window.verEstadisticasReporte = function() {
-                addMessage('📈 Cargando estadísticas del reporte...', false);
-            };
+
 
             // Función para guardar mensajes en el historial local
             function saveMessageToHistory(message, isUser, timestamp) {
