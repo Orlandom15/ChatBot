@@ -10,6 +10,9 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 import io
 import json
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
 
 app = Flask(__name__)
 db = NeonDatabase()
@@ -404,4 +407,4 @@ if __name__ == '__main__':
     print("   • /descargar/excel - Descargar Excel con todos los estudiantes")
     print("   • /descargar/pdf - Descargar PDF con todos los estudiantes") 
     print("   • /descargar/reporte/pendientes - Descargar Excel con estudiantes pendientes")
-    app.run(debug=True, port=5000)
+    app.run(debug=False, use_reloader=False, port=5000)
