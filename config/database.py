@@ -1,7 +1,9 @@
 import os
+import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
@@ -64,32 +66,109 @@ class NeonDatabase:
             print(f"❌ Error en test de conexión: {e}")
             return False
 
+    def diagnosticar_estudiantes(self):
+        """Diagnóstico completo de los estudiantes en la base de datos"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            print("🔍 **DIAGNÓSTICO DE ESTUDIANTES**")
+            
+            # 1. Total de estudiantes
+            cur.execute('SELECT COUNT(*) as total FROM estudiantes')
+            total = cur.fetchone()['total']
+            print(f"📊 Total de estudiantes: {total}")
+            
+            # 2. Estudiantes por estado de pago
+            cur.execute('''
+                SELECT 
+                    inscripcion_pagada,
+                    COUNT(*) as cantidad
+                FROM estudiantes 
+                GROUP BY inscripcion_pagada
+            ''')
+            estados = cur.fetchall()
+            print("💰 Estado de pagos:")
+            for estado in estados:
+                pagado = "✅ PAGADO" if estado['inscripcion_pagada'] else "❌ PENDIENTE"
+                print(f"   {pagado}: {estado['cantidad']} estudiantes")
+            
+            # 3. Listar algunos estudiantes de ejemplo
+            cur.execute('''
+                SELECT matricula, nombre, apellido, carrera, inscripcion_pagada
+                FROM estudiantes 
+                ORDER BY inscripcion_pagada DESC, matricula
+                LIMIT 5
+            ''')
+            ejemplos = cur.fetchall()
+            print("👥 Ejemplos de estudiantes:")
+            for est in ejemplos:
+                estado = "✅ PAGADO" if est['inscripcion_pagada'] else "❌ PENDIENTE"
+                print(f"   {est['matricula']} - {est['nombre']} {est['apellido']} - {est['carrera']} - {estado}")
+            
+            # 4. Ver estructura de la tabla
+            cur.execute('''
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = 'estudiantes'
+            ''')
+            columnas = cur.fetchall()
+            print("🗃️ Estructura de la tabla estudiantes:")
+            for col in columnas:
+                print(f"   {col['column_name']} ({col['data_type']})")
+            
+            cur.close()
+            conn.close()
+            
+            return {
+                'total_estudiantes': total,
+                'estados_pago': estados,
+                'ejemplos': ejemplos
+            }
+            
+        except Exception as e:
+            print(f"❌ Error en diagnóstico: {e}")
+            return {}
+
     def get_bot_response(self, user_message):
-        """Obtener respuesta del bot - VERSIÓN COMPLETAMENTE CORREGIDA"""
+        """Obtener respuesta del bot - EXPANDIDO PARA UNIVERSIDAD"""
         try:
             user_lower = user_message.lower().strip()
             print(f"   🔍 Analizando: '{user_lower}'")
+            
+            # === CONSULTAS UNIVERSITARIAS ===
+            if any(palabra in user_lower for palabra in ['estudiante', 'alumno', 'matricula', 'alumnos']):
+                return self._procesar_consulta_estudiantes(user_lower)
+            
+            elif any(palabra in user_lower for palabra in ['total', 'cuántos', 'cuantos', 'estadística', 'estadistica', 'estadísticas']):
+                return self._procesar_estadisticas(user_lower)
+            
+            elif any(palabra in user_lower for palabra in ['inscripción', 'inscripcion', 'pago', 'debe', 'pendiente']):
+                return self._procesar_inscripciones(user_lower)
+            
+            elif any(palabra in user_lower for palabra in ['reporte', 'archivo', 'descargar', 'generar', 'excel']):
+                return self._procesar_reportes(user_lower)
+            
+            elif any(palabra in user_lower for palabra in ['carrera', 'ingeniería', 'sistemas', 'industrial', 'contaduría']):
+                return self._procesar_carreras(user_lower)
+            
+            # Si no es consulta universitaria, usar la lógica normal
+            return self._procesar_consulta_normal(user_lower)
+            
+        except Exception as e:
+            print(f"❌ Error en get_bot_response: {str(e)}")
+            return "¡Hola! ¿En qué puedo ayudarte con información universitaria?", "error", 0.0
+
+    def _procesar_consulta_normal(self, user_message):
+        """Procesar consultas normales del chatbot empresarial"""
+        try:
+            user_lower = user_message.lower().strip()
             
             # PRIMERO: Verificar qué hay en la base de datos
             conn = self.get_connection()
             cur = conn.cursor()
             
-            print("   📊 CONSULTANDO common_intents...")
-            
-            # DEPURACIÓN: Ver todos los datos de common_intents
-            cur.execute('SELECT intent_name, example_questions, response_template FROM common_intents ORDER BY intent_name')
-            
-            all_intents = cur.fetchall()
-            print(f"   📋 Intenciones en BD: {len(all_intents)}")
-            
-            for intent in all_intents:
-                question_count = len(intent['example_questions']) if intent['example_questions'] else 0
-                print(f"      - {intent['intent_name']}: {question_count} preguntas")
-            
-            # Método 1: Buscar por palabras en example_questions - CONSULTA SIMPLIFICADA
-            print(f"   🔎 Buscando coincidencias para: '{user_lower}'")
-            
-            # CONSULTA CORREGIDA - sin parámetros problemáticos
+            # Método 1: Buscar por palabras en example_questions
             query = f"""
             SELECT intent_name, response_template 
             FROM common_intents 
@@ -106,14 +185,11 @@ class NeonDatabase:
             
             if intent_data:
                 print(f"   ✅ Intención ENCONTRADA en BD: {intent_data['intent_name']}")
-                print(f"   💬 Respuesta: {intent_data['response_template'][:50]}...")
                 cur.close()
                 conn.close()
                 return intent_data['response_template'], intent_data['intent_name'], 0.9
             
-            print("   ❌ No se encontró coincidencia exacta en example_questions")
-            
-           
+            # Método 2: Buscar por palabras clave
             keywords_mapping = {
                 'hola': 'greeting',
                 'servicio': 'services', 
@@ -132,7 +208,7 @@ class NeonDatabase:
                     print(f"   🎯 Intención detectada por keyword: {detected_intent}")
                     break
             
-            # Obtener respuesta para la intención detectada - CONSULTA SIMPLIFICADA
+            # Obtener respuesta para la intención detectada
             query2 = f"SELECT response_template FROM common_intents WHERE intent_name = '{detected_intent}'"
             cur.execute(query2)
             intent_response = cur.fetchone()
@@ -144,8 +220,7 @@ class NeonDatabase:
                 print(f"   ✅ Respuesta obtenida de BD para: {detected_intent}")
                 return intent_response['response_template'], detected_intent, 0.7
             
-            # Si llegamos aquí, usar respuesta local de respaldo
-            print("   ⚠️  Usando respuesta local de respaldo")
+            # Respuesta local de respaldo
             responses_map = {
                 'hola': ("¡Hola! ¿En qué puedo ayudarte?", "greeting", 0.9),
                 'servicios': ("Ofrecemos servicios de consultoría tecnológica, desarrollo de software y soporte técnico. ¿Te interesa algún servicio en particular?", "services", 0.9),
@@ -166,13 +241,453 @@ class NeonDatabase:
             return default_response, "default", 0.5
             
         except Exception as e:
-            print(f"❌ ERROR en get_bot_response: {str(e)}")
-            import traceback
-            print(f"❌ TRAZA COMPLETA: {traceback.format_exc()}")
+            print(f"❌ Error en consulta normal: {str(e)}")
+            return "¡Hola! ¿En qué puedo ayudarte?", "error", 0.0
+
+    def _procesar_estadisticas(self, user_message):
+        """Procesar consultas sobre estadísticas universitarias"""
+        try:
+            estadisticas = self.get_estadisticas_estudiantes()
             
-            # Respuesta de fallback ULTRA simple
-            fallback_response = "¡Hola! ¿En qué puedo ayudarte?"
-            return fallback_response, "error", 0.0
+            if not estadisticas:
+                return "No pude obtener las estadísticas en este momento.", "estadisticas", 0.5
+            
+            respuesta = f"📊 **Estadísticas Universitarias**\n\n"
+            respuesta += f"👥 **Total de estudiantes:** {estadisticas['total_estudiantes']}\n"
+            respuesta += f"✅ **Inscripción pagada:** {estadisticas['inscritos_pagados']}\n"
+            respuesta += f"❌ **Pendientes de pago:** {estadisticas['pendientes_inscripcion']}\n\n"
+            
+            respuesta += "🎓 **Distribución por carrera:**\n"
+            for carrera in estadisticas['por_carrera']:
+                respuesta += f"  • {carrera['carrera']}: {carrera['cantidad']} estudiantes\n"
+            
+            return respuesta, "estadisticas_universidad", 0.9
+            
+        except Exception as e:
+            print(f"❌ Error procesando estadísticas: {e}")
+            return "Error obteniendo estadísticas universitarias.", "error", 0.0
+
+    def _procesar_inscripciones(self, user_message):
+        """Procesar consultas sobre inscripciones"""
+        try:
+            if 'pendiente' in user_message or 'debe' in user_message:
+                estudiantes = self.get_estudiantes_pendientes_inscripcion()
+                
+                if not estudiantes:
+                    return "🎉 **¡Excelente! No hay estudiantes pendientes de inscripción.**", "inscripciones", 0.9
+                
+                respuesta = f"📋 **Estudiantes pendientes de inscripción: {len(estudiantes)}**\n\n"
+                for i, est in enumerate(estudiantes[:10], 1):
+                    estado = "❌ Pendiente"
+                    respuesta += f"{i}. **{est['matricula']}** - {est['nombre']} {est['apellido']}\n"
+                    respuesta += f"   🎓 {est['carrera']} - Semestre {est['semestre']}\n"
+                    respuesta += f"   📅 Inscrito desde: {est['fecha_inscripcion']}\n\n"
+                
+                if len(estudiantes) > 10:
+                    respuesta += f"📝 *Y {len(estudiantes) - 10} estudiantes más...*"
+                
+                return respuesta, "inscripciones_pendientes", 0.9
+            
+            return "Puedo ayudarte con información de inscripciones. ¿Quieres saber sobre estudiantes pendientes de pago?", "inscripciones", 0.7
+            
+        except Exception as e:
+            print(f"❌ Error procesando inscripciones: {e}")
+            return "Error obteniendo información de inscripciones.", "error", 0.0
+
+    def _procesar_reportes(self, user_message):
+        """Procesar solicitudes de reportes - MODIFICADO PARA MOSTRAR TODOS LOS ESTUDIANTES"""
+        try:
+            user_lower = user_message.lower()
+            
+            # Detectar tipo de reporte solicitado
+            if any(palabra in user_lower for palabra in ['inscripción', 'inscripcion', 'pago', 'pendiente']):
+                # Reporte específico de pendientes
+                estudiantes_pendientes = self.get_estudiantes_pendientes_inscripcion()
+                
+                respuesta = f"📄 **Reporte de INSCRIPCIONES PENDIENTES**\n\n"
+                respuesta += f"• **Estudiantes pendientes:** {len(estudiantes_pendientes)}\n"
+                respuesta += f"• **Fecha de generación:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+                
+                if estudiantes_pendientes:
+                    respuesta += "📋 **Lista de estudiantes pendientes:**\n"
+                    for i, est in enumerate(estudiantes_pendientes[:5], 1):
+                        respuesta += f"{i}. {est['matricula']} - {est['nombre']} {est['apellido']}\n"
+                    
+                    if len(estudiantes_pendientes) > 5:
+                        respuesta += f"\n📝 *Y {len(estudiantes_pendientes) - 5} estudiantes más...*"
+                else:
+                    respuesta += "🎉 **¡No hay estudiantes pendientes!**"
+                
+                return respuesta, "reporte_pendientes", 0.9
+            
+            else:
+                # ✅ REPORTE COMPLETO por defecto (todos los estudiantes)
+                reporte = self.generar_reporte_completo_estudiantes()
+                
+                respuesta = f"📄 **📊 REPORTE COMPLETO DE ESTUDIANTES**\n\n"
+                respuesta += f"• **Total de estudiantes:** {reporte['total_estudiantes']}\n"
+                respuesta += f"• **Inscripción pagada:** {reporte['estudiantes_pagados']}\n"
+                respuesta += f"• **Pendientes de pago:** {reporte['estudiantes_pendientes']}\n"
+                respuesta += f"• **ID del reporte:** {reporte['reporte_id']}\n"
+                respuesta += f"• **Fecha:** {reporte['fecha_generacion'][:10]}\n\n"
+                
+                # Mostrar resumen por carreras
+                if reporte['estudiantes']:
+                    carreras = {}
+                    for est in reporte['estudiantes']:
+                        carrera = est['carrera']
+                        carreras[carrera] = carreras.get(carrera, 0) + 1
+                    
+                    respuesta += "🎓 **Distribución por carrera:**\n"
+                    for carrera, cantidad in list(carreras.items())[:5]:
+                        respuesta += f"  • {carrera}: {cantidad} estudiantes\n"
+                
+                respuesta += "\n💡 *El reporte completo está listo para descargar*"
+                
+                return respuesta, "reporte_completo", 0.9
+                
+        except Exception as e:
+            print(f"❌ Error generando reporte: {e}")
+            return "Error generando el reporte. Por favor intenta nuevamente.", "error", 0.0
+
+    def _procesar_carreras(self, user_message):
+        """Procesar consultas sobre carreras"""
+        try:
+            carreras = self.get_carreras()
+            
+            respuesta = "🎓 **Carreras disponibles:**\n\n"
+            for carrera in carreras:
+                respuesta += f"• **{carrera['nombre']}** ({carrera['codigo']})\n"
+                respuesta += f"  Duración: {carrera['duracion_semestres']} semestres\n"
+                respuesta += f"  Inscripción: ${carrera['costo_inscripcion']}\n\n"
+            
+            return respuesta, "carreras", 0.9
+            
+        except Exception as e:
+            print(f"❌ Error obteniendo carreras: {e}")
+            return "Error obteniendo información de carreras.", "error", 0.0
+
+    def _procesar_consulta_estudiantes(self, user_message):
+        """Procesar consultas sobre estudiantes"""
+        try:
+            if 'total' in user_message:
+                estadisticas = self.get_estadisticas_estudiantes()
+                return f"👥 **Total de estudiantes registrados:** {estadisticas['total_estudiantes']}", "estudiantes_total", 0.9
+            
+            return "Puedo ayudarte con información de estudiantes. ¿Quieres saber el total, por carrera o pendientes de inscripción?", "estudiantes", 0.8
+            
+        except Exception as e:
+            print(f"❌ Error procesando consulta estudiantes: {e}")
+            return "Error obteniendo información de estudiantes.", "error", 0.0
+
+    # === MÉTODOS UNIVERSITARIOS ===
+
+    def get_estadisticas_estudiantes(self):
+        """Obtener estadísticas generales de estudiantes"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            # Total de estudiantes
+            cur.execute('SELECT COUNT(*) as total FROM estudiantes')
+            total_estudiantes = cur.fetchone()['total']
+            
+            # Estudiantes con inscripción pagada
+            cur.execute('SELECT COUNT(*) as pagados FROM estudiantes WHERE inscripcion_pagada = TRUE')
+            inscritos_pagados = cur.fetchone()['pagados']
+            
+            # Estudiantes que deben inscripción
+            cur.execute('SELECT COUNT(*) as pendientes FROM estudiantes WHERE inscripcion_pagada = FALSE')
+            pendientes_inscripcion = cur.fetchone()['pendientes']
+            
+            # Distribución por carrera
+            cur.execute('''
+                SELECT carrera, COUNT(*) as cantidad 
+                FROM estudiantes 
+                GROUP BY carrera 
+                ORDER BY cantidad DESC
+            ''')
+            por_carrera = cur.fetchall()
+            
+            cur.close()
+            conn.close()
+            
+            return {
+                'total_estudiantes': total_estudiantes,
+                'inscritos_pagados': inscritos_pagados,
+                'pendientes_inscripcion': pendientes_inscripcion,
+                'por_carrera': por_carrera
+            }
+            
+        except Exception as e:
+            print(f"❌ Error obteniendo estadísticas: {e}")
+            return {}
+
+    def get_estudiantes_pendientes_inscripcion(self):
+        """Obtener lista de estudiantes que deben inscripción"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            cur.execute('''
+                SELECT matricula, nombre, apellido, carrera, semestre, fecha_inscripcion
+                FROM estudiantes 
+                WHERE inscripcion_pagada = FALSE
+                ORDER BY fecha_inscripcion DESC
+            ''')
+            
+            estudiantes = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            return estudiantes
+            
+        except Exception as e:
+            print(f"❌ Error obteniendo estudiantes pendientes: {e}")
+            return []
+
+    def get_todos_estudiantes(self, limit=500):
+        """Obtener TODOS los estudiantes - VERSIÓN DIAGNÓSTICA"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            print(f"🔍 Ejecutando consulta para TODOS los estudiantes (límite: {limit})")
+            
+            cur.execute('''
+                SELECT 
+                    matricula, 
+                    nombre, 
+                    apellido, 
+                    carrera, 
+                    semestre, 
+                    fecha_inscripcion,
+                    inscripcion_pagada,
+                    COALESCE(email, 'No especificado') as email,
+                    COALESCE(telefono, 'No especificado') as telefono
+                FROM estudiantes 
+                ORDER BY carrera, nombre, apellido
+                LIMIT %s
+            ''', (limit,))
+            
+            estudiantes = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            print(f"📊 CONSULTA get_todos_estudiantes retornó: {len(estudiantes)} estudiantes")
+            
+            # Verificar algunos registros
+            if estudiantes:
+                for i, est in enumerate(estudiantes[:3]):
+                    estado = "PAGADO" if est['inscripcion_pagada'] else "PENDIENTE"
+                    print(f"   Ejemplo {i+1}: {est['matricula']} - {estado}")
+            
+            return estudiantes
+            
+        except Exception as e:
+            print(f"❌ Error en get_todos_estudiantes: {e}")
+            return []
+
+    def get_estudiantes_por_carrera(self, carrera=None):
+        """Obtener estudiantes filtrados por carrera"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            if carrera:
+                cur.execute('''
+                    SELECT matricula, nombre, apellido, semestre, inscripcion_pagada
+                    FROM estudiantes 
+                    WHERE carrera = %s
+                    ORDER BY nombre
+                ''', (carrera,))
+            else:
+                cur.execute('''
+                    SELECT matricula, nombre, apellido, carrera, semestre, inscripcion_pagada
+                    FROM estudiantes 
+                    ORDER BY carrera, nombre
+                ''')
+            
+            estudiantes = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            return estudiantes
+            
+        except Exception as e:
+            print(f"❌ Error obteniendo estudiantes por carrera: {e}")
+            return []
+
+    def get_carreras(self):
+        """Obtener lista de carreras"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            cur.execute('SELECT codigo, nombre, duracion_semestres, costo_inscripcion FROM carreras WHERE activa = TRUE ORDER BY nombre')
+            
+            carreras = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            return carreras
+            
+        except Exception as e:
+            print(f"❌ Error obteniendo carreras: {e}")
+            return []
+
+    def generar_reporte_inscripciones(self):
+        """Generar reporte de inscripciones pendientes"""
+        try:
+            estudiantes_pendientes = self.get_estudiantes_pendientes_inscripcion()
+            
+            # Simular generación de archivo
+            reporte_id = f"reporte_inscripciones_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            # Guardar metadata del reporte
+            cur.execute('''
+                INSERT INTO reportes_generados (tipo_reporte, parametros, generado_por)
+                VALUES (%s, %s, %s)
+            ''', ('inscripciones_pendientes', 
+                 {'cantidad_estudiantes': len(estudiantes_pendientes)}, 
+                 'sistema_chatbot'))
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return {
+                'reporte_id': reporte_id,
+                'tipo': 'inscripciones_pendientes',
+                'estudiantes': estudiantes_pendientes,
+                'total_pendientes': len(estudiantes_pendientes),
+                'fecha_generacion': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            print(f"❌ Error generando reporte: {e}")
+            return {}
+
+    def generar_reporte_completo_estudiantes(self):
+            """✅ GENERAR REPORTE DE TODOS LOS ESTUDIANTES - VERSIÓN CORREGIDA"""
+            try:
+                print("🔄 Iniciando generación de reporte COMPLETO...")
+                
+                conn = self.get_connection()
+                cur = conn.cursor()
+                
+                # Obtener TODOS los estudiantes sin filtros
+                cur.execute('''
+                    SELECT 
+                        matricula, 
+                        nombre, 
+                        apellido, 
+                        carrera, 
+                        semestre, 
+                        fecha_inscripcion,
+                        inscripcion_pagada,
+                        COALESCE(email, 'No especificado') as email,
+                        COALESCE(telefono, 'No especificado') as telefono
+                    FROM estudiantes 
+                    ORDER BY carrera, nombre, apellido
+                    LIMIT 1000
+                ''')
+                
+                todos_estudiantes = cur.fetchall()
+                
+                print(f"📊 Estudiantes obtenidos en consulta SQL: {len(todos_estudiantes)}")
+                
+                # Contadores manuales para verificar
+                total_estudiantes = len(todos_estudiantes)
+                estudiantes_pagados = 0
+                estudiantes_pendientes = 0
+                
+                for est in todos_estudiantes:
+                    if est['inscripcion_pagada']:
+                        estudiantes_pagados += 1
+                    else:
+                        estudiantes_pendientes += 1
+                
+                print(f"✅ Estudiantes pagados: {estudiantes_pagados}")
+                print(f"❌ Estudiantes pendientes: {estudiantes_pendientes}")
+                
+                # ID del reporte
+                reporte_id = f"reporte_completo_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                
+                # ✅ CORRECCIÓN: Convertir el diccionario a JSON string para PostgreSQL
+                parametros_json = {
+                    'total_estudiantes': total_estudiantes,
+                    'estudiantes_pagados': estudiantes_pagados,
+                    'estudiantes_pendientes': estudiantes_pendientes
+                }
+                
+                # Guardar metadata del reporte
+                cur.execute('''
+                    INSERT INTO reportes_generados (tipo_reporte, parametros, generado_por)
+                    VALUES (%s, %s, %s)
+                ''', (
+                    'reporte_completo_estudiantes', 
+                    json.dumps(parametros_json),  # ✅ Convertir a JSON string
+                    'sistema_chatbot'
+                ))
+                
+                conn.commit()
+                cur.close()
+                conn.close()
+                
+                resultado = {
+                    'reporte_id': reporte_id,
+                    'tipo': 'reporte_completo_estudiantes',
+                    'estudiantes': todos_estudiantes,
+                    'total_estudiantes': total_estudiantes,
+                    'estudiantes_pagados': estudiantes_pagados,
+                    'estudiantes_pendientes': estudiantes_pendientes,
+                    'fecha_generacion': datetime.now().isoformat()
+                }
+                
+                print(f"🎉 Reporte COMPLETO generado exitosamente:")
+                print(f"   - ID: {reporte_id}")
+                print(f"   - Total: {total_estudiantes}")
+                print(f"   - Pagados: {estudiantes_pagados}")
+                print(f"   - Pendientes: {estudiantes_pendientes}")
+                
+                return resultado
+                    
+            except Exception as e:
+                print(f"❌ Error generando reporte completo: {e}")
+                import traceback
+                print(f"🔍 Traceback: {traceback.format_exc()}")
+                return {}
+    def buscar_estudiante(self, criterio, valor):
+        """Buscar estudiante por diferentes criterios"""
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            
+            if criterio == 'matricula':
+                cur.execute('SELECT * FROM estudiantes WHERE matricula = %s', (valor,))
+            elif criterio == 'nombre':
+                cur.execute('SELECT * FROM estudiantes WHERE nombre ILIKE %s OR apellido ILIKE %s', 
+                           (f'%{valor}%', f'%{valor}%'))
+            elif criterio == 'carrera':
+                cur.execute('SELECT * FROM estudiantes WHERE carrera ILIKE %s', (f'%{valor}%',))
+            else:
+                return []
+            
+            estudiantes = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            return estudiantes
+            
+        except Exception as e:
+            print(f"❌ Error buscando estudiante: {e}")
+            return []
+
+    # === MÉTODOS EXISTENTES DEL CHATBOT ===
 
     def save_conversation(self, session_id, user_message, bot_response, intent=None, confidence=0.0):
         """Guardar conversación en la base de datos - VERSIÓN SIMPLIFICADA"""
@@ -222,7 +737,9 @@ class NeonDatabase:
             return False
         
         # ✅ SÍ guardar mensajes con intenciones valiosas
-        valuable_intents = {'services', 'contact', 'hours', 'location', 'pricing'}
+        valuable_intents = {'services', 'contact', 'hours', 'location', 'pricing', 
+                           'estadisticas_universidad', 'inscripciones_pendientes', 
+                           'reporte_generado', 'carreras', 'estudiantes', 'reporte_completo'}
         if intent in valuable_intents:
             return True
         
@@ -281,7 +798,7 @@ class NeonDatabase:
             return {
                 'total_messages': total_messages,
                 'unique_sessions': unique_sessions,
-                'top_intents': []  # Simplificado por ahora
+                'top_intents': []
             }
             
         except Exception as e:
