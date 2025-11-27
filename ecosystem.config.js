@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "flask-universidad",
       script: "app.py",
-      interpreter: "python3",
+      interpreter: "python",
       watch: false
     }
   ]
