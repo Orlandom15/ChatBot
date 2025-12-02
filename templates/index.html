@@ -34,57 +34,91 @@
         
         /* Modal de confirmación */
         .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        backdrop-filter: blur(3px);
         }
-        
+    
         .modal-content {
             background-color: white;
             margin: 15% auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: 300px;
+            padding: 2rem;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            animation: modalAppear 0.3s ease-out;
+        }
+        
+        @keyframes modalAppear {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-content h3 {
+            color: #dc3545;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .modal-content p {
+            margin: 0.5rem 0;
+            color: #666;
+            line-height: 1.5;
         }
         
         .modal-buttons {
-            margin-top: 20px;
+            margin-top: 1.5rem;
             display: flex;
-            gap: 10px;
+            gap: 1rem;
             justify-content: center;
         }
         
         .btn-confirmar {
-            background: #dc3545;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
             cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            flex: 1;
         }
         
         .btn-cancelar {
-            background: #6c757d;
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
             cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            flex: 1;
         }
         
         .btn-confirmar:hover {
-            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
         }
         
         .btn-cancelar:hover {
-            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
         }
         /* Estilos para tablas universitarias */
         .tabla-universidad {
@@ -259,6 +293,99 @@
             
             .estadisticas-grid {
                 grid-template-columns: 1fr;
+            }
+        }
+        .message.with-table {
+        max-width: 95% !important;
+        padding: 1rem;
+        }
+        
+        .mapa-container {
+            margin: 1rem 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .btn-descargar-mapa {
+            background: linear-gradient(135deg, #068112 0%, #045410 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        
+        .btn-descargar-mapa:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(6, 129, 18, 0.2);
+        }
+        
+        /* Mejora para iframe de Google Maps */
+        .mapa-container iframe {
+            display: block;
+            border: none;
+        }
+        
+        /* Modal para ver imagen ampliada */
+        .modal-imagen {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-imagen-contenido {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: zoomIn 0.3s ease;
+            cursor: zoom-out;
+        }
+        
+        .btn-cerrar-modal {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+            z-index: 2001;
+            transition: color 0.3s;
+        }
+        
+        .btn-cerrar-modal:hover {
+            color: #068112;
+        }
+        
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
             }
         }
     </style>
