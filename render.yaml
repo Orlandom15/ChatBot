@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: chatbot-universitario
+    env: python
+    region: ohio  # oregon, frankfurt, singapore
+    plan: free    # free, starter, pro
+    
+    # Build commands
+    buildCommand: |
+      pip install -r requirements.txt
+      
+    # Start command
+    startCommand: gunicorn app:app
+    
+    # Health check
+    healthCheckPath: /health
+    healthCheckTimeout: 180
+    
+    # Auto-deploy
+    autoDeploy: true
+    branch: main
+    
+    # Environment variables
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: psql 'postgresql://neondb_owner:npg_VucFrN1XpB4O@ep-jolly-bush-ad1cfyvj-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+        fromDatabase:
+          name: chatbot-db
+          property: connectionString
+      - key: e77cbc71577fe50d36fd15813cdfe7f4e1286104ce957a66168dbef42397154f
+        generateValue: true
+      - key: PORT
+        value: 10000  # Render usa puerto 10000
+    
+    # Domains
+    domains:
+      - chatbot-universitario.onrender.com
+    
+    # Advanced
+    disk:
+      name: chatbot-data
+      mountPath: /data
+      sizeGB: 1

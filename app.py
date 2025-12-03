@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, Response
 import uuid
+import os
 from datetime import datetime
 from config.database import NeonDatabase
 import pandas as pd
@@ -9,6 +10,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 import io
+from config.database import NeonDatabase
 import json
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
@@ -16,6 +18,56 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__)
 db = NeonDatabase()
+
+# Configuración específica para Render
+if os.environ.get('RENDER'):
+    # Render usa puerto 10000 internamente
+    app.config['SERVER_NAME'] = os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')
+    
+    # Configuración de seguridad para producción
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    
+    # Deshabilitar debug en producción
+    app.config['DEBUG'] = False
+    app.config['TESTING'] = False
+
+# Health check mejorado para Render
+@app.route('/health')
+def health_check():
+    """Health check endpoint para Render"""
+    try:
+        # Verificar base de datos
+        db.test_connection()
+        
+        # Verificar servicios
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        
+        health_status = {
+            'status': 'healthy',
+            'service': 'ChatBot Universitario',
+            'timestamp': datetime.now().isoformat(),
+            'version': '1.0.0',
+            'environment': os.environ.get('FLASK_ENV', 'development'),
+            'database': 'connected',
+            'endpoints': {
+                'chat': '/chat',
+                'metrics': '/metrics',
+                'api_docs': '/api'
+            }
+        }
+        
+        return jsonify(health_status)
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 503
 
 @app.route('/')
 def index():
