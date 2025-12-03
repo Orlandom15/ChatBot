@@ -1,10 +1,9 @@
 from flask import Flask, render_template, request, jsonify, Response
 import uuid
-import os
 from datetime import datetime
 from config.database import NeonDatabase
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment
+import pandas as pd
+from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
@@ -17,164 +16,6 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__)
 db = NeonDatabase()
-
-# Configuración específica para Render
-if os.environ.get('RENDER'):
-    # Render usa puerto 10000 internamente
-    app.config['SERVER_NAME'] = os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')
-    
-    # Configuración de seguridad para producción
-    app.config['SESSION_COOKIE_SECURE'] = True
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    
-    # Deshabilitar debug en producción
-    app.config['DEBUG'] = False
-    app.config['TESTING'] = False
-
-# ============================================
-# FUNCIONES PARA REEMPLAZAR pandas
-# ============================================
-
-def generar_excel_sin_pandas(data, nombre_hoja="Datos"):
-    """
-    Reemplaza pd.DataFrame().to_excel() completamente
-    """
-    wb = Workbook()
-    ws = wb.active
-    ws.title = nombre_hoja
-    
-    if not data:
-        return wb
-    
-    # Obtener encabezados
-    headers = list(data[0].keys())
-    
-    # Escribir encabezados con estilo
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal='center')
-    
-    # Escribir datos
-    for row_idx, item in enumerate(data, 2):
-        for col_idx, header in enumerate(headers, 1):
-            value = item.get(header)
-            # Convertir tipos especiales
-            if isinstance(value, bool):
-                value = '✅ Sí' if value else '❌ No'
-            elif isinstance(value, datetime):
-                value = value.strftime('%Y-%m-%d %H:%M:%S')
-            ws.cell(row=row_idx, column=col_idx, value=value)
-    
-    # Ajustar ancho de columnas
-    for column in ws.columns:
-        max_length = 0
-        column_letter = column[0].column_letter
-        for cell in column:
-            try:
-                if cell.value and len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except:
-                pass
-        adjusted_width = min(max_length + 2, 50)
-        ws.column_dimensions[column_letter].width = adjusted_width
-    
-    return wb
-
-def descargar_excel_como_bytes(data, filename="reporte.xlsx"):
-    """Descarga Excel como bytes (reemplaza pandas)"""
-    wb = generar_excel_sin_pandas(data)
-    
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-    
-    return output.getvalue()
-
-def generar_pdf_sin_pandas(data, titulo="Reporte"):
-    """Generar PDF sin usar pandas"""
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
-    elements = []
-    styles = getSampleStyleSheet()
-    
-    # Título
-    title = Paragraph(titulo, styles['Title'])
-    elements.append(title)
-    
-    # Crear tabla directamente desde los datos
-    if data:
-        # Encabezados
-        headers = list(data[0].keys())
-        table_data = [headers]
-        
-        # Datos
-        for item in data:
-            row = []
-            for header in headers:
-                value = item.get(header, '')
-                # Formatear valores especiales
-                if isinstance(value, bool):
-                    value = '✅ Sí' if value else '❌ No'
-                elif isinstance(value, datetime):
-                    value = value.strftime('%Y-%m-%d')
-                row.append(str(value))
-            table_data.append(row)
-        
-        # Crear tabla
-        table = Table(table_data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        
-        elements.append(table)
-    
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
-
-# ============================================
-# ENDPOINTS
-# ============================================
-
-# Health check mejorado para Render
-@app.route('/health')
-def health_check():
-    """Health check endpoint para Render"""
-    try:
-        # Verificar base de datos
-        db.test_connection()
-        
-        health_status = {
-            'status': 'healthy',
-            'service': 'ChatBot Universitario',
-            'timestamp': datetime.now().isoformat(),
-            'version': '1.0.0',
-            'environment': os.environ.get('FLASK_ENV', 'development'),
-            'database': 'connected',
-            'endpoints': {
-                'chat': '/chat',
-                'metrics': '/metrics',
-                'api_docs': '/api'
-            }
-        }
-        
-        return jsonify(health_status)
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 503
 
 @app.route('/')
 def index():
@@ -345,10 +186,10 @@ def get_todos_estudiantes():
         print(f"❌ Error en /api/universidad/estudiantes/todos: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-# 📊 NUEVAS RUTAS PARA DESCARGAS (SIN pandas)
+# 📊 NUEVAS RUTAS PARA DESCARGAS
 @app.route('/descargar/excel')
 def descargar_excel():
-    """Descargar reporte de estudiantes en Excel SIN pandas"""
+    """Descargar reporte de estudiantes en Excel"""
     try:
         # Obtener todos los estudiantes
         estudiantes = db.get_todos_estudiantes(limit=1000)
@@ -356,7 +197,7 @@ def descargar_excel():
         if not estudiantes:
             return jsonify({'success': False, 'error': 'No hay estudiantes para exportar'})
         
-        # Preparar datos
+        # Crear DataFrame
         data = []
         for est in estudiantes:
             data.append({
@@ -365,17 +206,37 @@ def descargar_excel():
                 'Carrera': est['carrera'],
                 'Semestre': est['semestre'],
                 'Fecha Inscripción': est['fecha_inscripcion'].strftime('%Y-%m-%d') if est['fecha_inscripcion'] else 'N/A',
-                'Estado Pago': '✅ PAGADO' if est.get('inscripcion_pagada') else '❌ PENDIENTE',
+                'Estado Pago': '✅ PAGADO' if est['inscripcion_pagada'] else '❌ PENDIENTE',
                 'Email': est.get('email', 'No especificado'),
                 'Teléfono': est.get('telefono', 'No especificado')
             })
         
-        # Usar la nueva función SIN pandas
-        excel_bytes = descargar_excel_como_bytes(data, "reporte_estudiantes.xlsx")
+        df = pd.DataFrame(data)
+        
+        # Crear archivo Excel en memoria
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Estudiantes', index=False)
+            
+            # Formato de columnas
+            worksheet = writer.sheets['Estudiantes']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
         
         # Enviar archivo
         return Response(
-            excel_bytes,
+            output.getvalue(),
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
                 "Content-Disposition": "attachment; filename=reporte_estudiantes.xlsx",
@@ -389,7 +250,7 @@ def descargar_excel():
 
 @app.route('/descargar/pdf')
 def descargar_pdf():
-    """Descargar reporte de estudiantes en PDF SIN pandas"""
+    """Descargar reporte de estudiantes en PDF"""
     try:
         # Obtener todos los estudiantes
         estudiantes = db.get_todos_estudiantes(limit=1000)
@@ -397,24 +258,70 @@ def descargar_pdf():
         if not estudiantes:
             return jsonify({'success': False, 'error': 'No hay estudiantes para exportar'})
         
-        # Preparar datos para PDF
-        data = []
-        for est in estudiantes:
-            data.append({
-                'Matrícula': est['matricula'],
-                'Nombre': f"{est['nombre']} {est['apellido']}",
-                'Carrera': est['carrera'],
-                'Semestre': est['semestre'],
-                'Fecha': est['fecha_inscripcion'].strftime('%Y-%m-%d') if est['fecha_inscripcion'] else 'N/A',
-                'Estado': 'PAGADO' if est.get('inscripcion_pagada') else 'PENDIENTE'
-            })
+        # Crear PDF en memoria
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
         
-        # Usar la nueva función SIN pandas
-        pdf_buffer = generar_pdf_sin_pandas(data, "REPORTE DE ESTUDIANTES - UNIVERSIDAD")
+        # Título
+        title = Paragraph("REPORTE DE ESTUDIANTES - UNIVERSIDAD", styles['Title'])
+        elements.append(title)
+        
+        # Estadísticas
+        total = len(estudiantes)
+        pagados = sum(1 for e in estudiantes if e['inscripcion_pagada'])
+        pendientes = total - pagados
+        
+        stats_text = f"""
+        <b>Estadísticas:</b><br/>
+        • Total de estudiantes: {total}<br/>
+        • Inscripción pagada: {pagados}<br/>
+        • Pendientes de pago: {pendientes}<br/>
+        • Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+        """
+        stats = Paragraph(stats_text, styles['Normal'])
+        elements.append(stats)
+        elements.append(Paragraph("<br/>", styles['Normal']))
+        
+        # Preparar datos para la tabla
+        data = [['Matrícula', 'Nombre', 'Carrera', 'Semestre', 'Estado']]
+        
+        for est in estudiantes:
+            estado = 'PAGADO' if est['inscripcion_pagada'] else 'PENDIENTE'
+            fecha = est['fecha_inscripcion'].strftime('%d/%m/%Y') if est['fecha_inscripcion'] else 'N/A'
+            data.append([
+                est['matricula'],
+                f"{est['nombre']} {est['apellido']}",
+                est['carrera'],
+                str(est['semestre']),
+                estado
+            ])
+        
+        # Crear tabla
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        elements.append(table)
+        
+        # Generar PDF
+        doc.build(elements)
+        buffer.seek(0)
         
         # Enviar archivo
         return Response(
-            pdf_buffer.getvalue(),
+            buffer.getvalue(),
             mimetype="application/pdf",
             headers={
                 "Content-Disposition": "attachment; filename=reporte_estudiantes.pdf"
@@ -427,14 +334,14 @@ def descargar_pdf():
 
 @app.route('/descargar/reporte/pendientes')
 def descargar_reporte_pendientes():
-    """Descargar reporte específico de estudiantes pendientes SIN pandas"""
+    """Descargar reporte específico de estudiantes pendientes"""
     try:
         estudiantes = db.get_estudiantes_pendientes_inscripcion()
         
         if not estudiantes:
             return jsonify({'success': False, 'error': 'No hay estudiantes pendientes'})
         
-        # Preparar datos
+        # Crear DataFrame
         data = []
         for est in estudiantes:
             data.append({
@@ -447,11 +354,31 @@ def descargar_reporte_pendientes():
                 'Teléfono': est.get('telefono', 'No especificado')
             })
         
-        # Usar la nueva función SIN pandas
-        excel_bytes = descargar_excel_como_bytes(data, "estudiantes_pendientes.xlsx")
+        df = pd.DataFrame(data)
+        
+        # Crear archivo Excel en memoria
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Estudiantes Pendientes', index=False)
+            
+            # Formato de columnas
+            worksheet = writer.sheets['Estudiantes Pendientes']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
         
         return Response(
-            excel_bytes,
+            output.getvalue(),
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
                 "Content-Disposition": "attachment; filename=estudiantes_pendientes.xlsx"
@@ -475,11 +402,9 @@ def diagnostico():
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
-    # Render asigna puerto via variable de entorno
-    port = int(os.environ.get('PORT', 5000))
-    
-    # En producción usar gunicorn, en desarrollo el servidor de Flask
-    if os.environ.get('FLASK_ENV') == 'production':
-        app.run(host='0.0.0.0', port=port)
-    else:
-        app.run(host='0.0.0.0', port=port, debug=True)
+    print("🚀 ChatBot Universitario funcionando en http://localhost:5000")
+    print("📊 Endpoints de descarga disponibles:")
+    print("   • /descargar/excel - Descargar Excel con todos los estudiantes")
+    print("   • /descargar/pdf - Descargar PDF con todos los estudiantes") 
+    print("   • /descargar/reporte/pendientes - Descargar Excel con estudiantes pendientes")
+    app.run(debug=False, use_reloader=False, port=5000)
