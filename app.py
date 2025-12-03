@@ -454,9 +454,11 @@ def diagnostico():
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
-    print("🚀 ChatBot Universitario funcionando en http://localhost:5000")
-    print("📊 Endpoints de descarga disponibles:")
-    print("   • /descargar/excel - Descargar Excel con todos los estudiantes")
-    print("   • /descargar/pdf - Descargar PDF con todos los estudiantes") 
-    print("   • /descargar/reporte/pendientes - Descargar Excel con estudiantes pendientes")
-    app.run(debug=False, use_reloader=False, port=5000)
+    # Render asigna puerto via variable de entorno
+    port = int(os.environ.get('PORT', 5000))
+    
+    # En producción usar gunicorn, en desarrollo el servidor de Flask
+    if os.environ.get('FLASK_ENV') == 'production':
+        app.run(host='0.0.0.0', port=port)
+    else:
+        app.run(host='0.0.0.0', port=port, debug=True)
