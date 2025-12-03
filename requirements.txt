@@ -3,8 +3,8 @@ psycopg2-binary==2.9.7
 python-dotenv==1.0.0
 openpyxl==3.1.2
 reportlab==4.0.4
-pandas==2.1.1
-gunicorn==23.0.0
+pandas==1.5.3  
+gunicorn==21.2.0
 prometheus-client==0.17.1
 psutil==5.9.5
 mysql-connector-python
